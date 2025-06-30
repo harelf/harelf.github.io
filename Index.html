@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Report Generator</title>
+    <style>
+    body {
+      background: #f5f7fa;
+      font-family: 'Roboto', sans-serif;
+      margin: 10px;
+      padding: 10px;
+      width: 900px;
+      justify-content: center;
+      align-items: center;
+    }
+    .container {
+      max-width: 90%;
+      margin: 40px auto;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      padding: 32px 28px;
+    }
+    h2 {
+      text-align: center;
+      color: #2d3a4b;
+      font-weight: 500;
+    }
+    label {
+      display: block;
+      margin-top: 18px;
+      color: #3a4a5e;
+      font-size: 1rem;
+	  width: 400px;
+    }
+    input, select {
+      width: 200px;
+      padding: 10px 12px;
+      margin-top: 6px;
+      border-radius: 4px;
+      border: 1px solid #cfd8dc;
+      font-size: 1rem;
+      background-color: #f9fafb;
+    }
+    input[type="date"]::-webkit-input-placeholder { color:#b0bec5; }
+    input[type="date"]::-moz-placeholder { color:#b0bec5; }
+    input[type="date"]:-ms-input-placeholder { color:#b0bec5; }
+    input[type="date"]::placeholder { color:#b0bec5; }
+
+    button {
+      margin-top: 28px;
+      width: 225px;
+      background-color: #1976d2;
+      color: #fff;
+      border: none;
+      padding: 13px;
+      border-radius: 4px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background .2s ease-in-out;
+    }
+    button:hover {
+      background-color: #1565c0;
+    }
+    .output {
+      margin-top:24px; 
+      background:#f1f8e9; 
+      border-radius:6px; 
+      padding:18px; 
+      font-family:'Roboto Mono',monospace; 
+      color:#263238; 
+      font-size:.97rem; 
+    }
+    .output pre {
+        white-space: pre-wrap; 
+        word-break: break-all; 
+        margin-bottom:.7em
+    }
+        textarea { width: 100%; height: 200px; margin-top: 20px; }
+        .form-group { margin-bottom: 10px;}
+    </style>
+</head>
+<body>
+	<h2>SPAPI Backfill JSON Generator</h2>
+    <form id="reportForm" onsubmit="generateJSON(event)">
+        <div class="form-group">
+            <label for="start_date">Start Date:</label>
+            <input type="date" id="start_date" name="start_date" required pattern="\d{4}-\d{2}-\d{2}">
+        </div>
+        <div class="form-group">
+            <label for="end_date">End Date:</label>
+            <input type="date" id="end_date" name="end_date" required pattern="\d{4}-\d{2}-\d{2}">
+        </div>
+        <div class="form-group">
+            <label for="interval">Interval (in days):</label>
+            <input type="number" id="interval" name="interval" min="1" required>
+        </div>
+        <div class="form-group">
+            <label for="ks_name">KS Name:</label>
+            <input type="text" id="ks_name" name="ks_name" required>
+        </div>
+        <div class="form-group">
+            <label for="account_id">Account ID:</label>
+            <input type="text" id="account_id" name="account_id" required>
+        </div>
+        <div class="form-group">
+            <label for="report_type">Report Type:</label>
+            <input type="text" id="report_type" name="report_type" required>
+        </div>
+        <button type="submit">Generate JSON</button>
+    </form>
+
+    <textarea id="output" readonly placeholder="Generated JSON will appear here..."></textarea>
+
+<script>
+function pad(num) {
+    return num.toString().padStart(2, '0');
+}
+
+function formatDate(date) {
+    return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate());
+}
+
+function generateJSON(event) {
+    event.preventDefault();
+
+    const startDateStr = document.getElementById('start_date').value;
+    const endDateStr = document.getElementById('end_date').value;
+    const interval = parseInt(document.getElementById('interval').value, 10);
+    const ksName = document.getElementById('ks_name').value;
+    const accountId = document.getElementById('account_id').value;
+    const reportType = document.getElementById('report_type').value;
+
+    if (!startDateStr || !endDateStr || isNaN(interval) || interval <= 0) {
+        alert("Please fill all fields correctly.");
+        return;
+    }
+
+    let startDate = new Date(startDateStr);
+    let endDate = new Date(endDateStr);
+
+    if (startDate > endDate) {
+        alert("Start date must be before or equal to end date.");
+        return;
+    }
+
+    let output = '';
+    let currentStart = new Date(startDate);
+
+    while (currentStart <= endDate) {
+        let currentEnd = new Date(currentStart);
+        currentEnd.setDate(currentEnd.getDate() + interval - 1);
+
+        if (currentEnd > endDate) {
+            currentEnd = new Date(endDate);
+        }
+
+        // Build the JSON string
+        let jsonObj = {
+            "start_date": formatDate(currentStart),
+            "end_date": formatDate(currentEnd),
+            "report_type": reportType,
+            "ks_names": ksName,
+            "account_ids": ksName + "_" + accountId
+        };
+        
+        output += JSON.stringify(jsonObj) + '\n';
+
+        // Move to next interval
+        currentStart.setDate(currentEnd.getDate() + 1);
+    }
+
+    document.getElementById('output').value = output.trim();
+}
+</script>
+
+</body>
+</html>
