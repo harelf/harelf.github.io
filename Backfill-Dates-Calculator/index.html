@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Date Interval Generator</title>
+  <!--<style>
+    body { font-family: Arial, sans-serif; margin: 40px; }
+    label { display: block; margin-top: 10px; }
+    input[type="date"], input[type="number"] { padding: 5px; margin-top: 5px; }
+    #output { white-space: pre-line; margin-top: 20px; background: #f9f9f9; padding: 15px; border-radius: 5px;}
+    button { margin-top: 15px; padding: 8px 16px;}
+  </style>-->
+      <style>
+    body {
+      background: #f5f7fa;
+      font-family: 'Roboto', sans-serif;
+      margin: 10px;
+      padding: 10px;
+      width: 900px;
+      justify-content: center;
+      align-items: center;
+    }
+    .container {
+      max-width: 90%;
+      margin: 40px auto;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      padding: 32px 28px;
+    }
+    h2 {
+      text-align: center;
+      color: #2d3a4b;
+      font-weight: 500;
+    }
+    label {
+      display: block;
+      margin-top: 18px;
+      color: #3a4a5e;
+      font-size: 1rem;
+	  width: 400px;
+    }
+    input, select {
+      width: 200px;
+      padding: 10px 12px;
+      margin-top: 6px;
+      border-radius: 4px;
+      border: 1px solid #cfd8dc;
+      font-size: 1rem;
+      background-color: #f9fafb;
+    }
+    input[type="date"]::-webkit-input-placeholder { color:#b0bec5; }
+    input[type="date"]::-moz-placeholder { color:#b0bec5; }
+    input[type="date"]:-ms-input-placeholder { color:#b0bec5; }
+    input[type="date"]::placeholder { color:#b0bec5; }
+
+    button {
+      margin-top: 28px;
+      width: 225px;
+      background-color: #1976d2;
+      color: #fff;
+      border: none;
+      padding: 13px;
+      border-radius: 4px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background .2s ease-in-out;
+    }
+    button:hover {
+      background-color: #1565c0;
+    }
+    #output { white-space: pre-line; margin-top: 20px; background: #f9f9f9; padding: 15px; border-radius: 5px;}
+</style>
+</head>
+<body>
+  <h2>Date Interval Generator</h2>
+  <form id="intervalForm">
+    <label for="start_date">Start Date:</label>
+    <input type="date" id="start_date" name="start_date" required pattern="\d{4}-\d{2}-\d{2}">
+
+    <label for="end_date">End Date:</label>
+    <input type="date" id="end_date" name="end_date" required pattern="\d{4}-\d{2}-\d{2}">
+
+    <label for="interval">Interval (in days):</label>
+    <input type="number" id="interval" name="interval" min="1" required>
+
+    <br><button type="submit">Generate</button>
+  </form>
+
+  <div id="output"></div>
+
+<script>
+function formatDate(date) {
+  // Returns date as YYYY-mm-dd
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+document.getElementById('intervalForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+
+  const startDateStr = document.getElementById('start_date').value;
+  const endDateStr = document.getElementById('end_date').value;
+  const intervalDays = parseInt(document.getElementById('interval').value, 10);
+
+  if (!startDateStr || !endDateStr || isNaN(intervalDays) || intervalDays <= 0) {
+    document.getElementById('output').textContent = 'Please fill all fields correctly.';
+    return;
+  }
+
+  let startDate = new Date(startDateStr);
+  let endDate = new Date(endDateStr);
+
+  if (startDate > endDate) {
+    document.getElementById('output').textContent = 'Start date must be before or equal to end date.';
+    return;
+  }
+
+  let output = '';
+  let currentStart = new Date(startDate);
+
+  let rowNum = 1;
+  
+  while (currentStart <= endDate) {
+    let currentEnd = new Date(currentStart);
+    currentEnd.setDate(currentEnd.getDate() + intervalDays -1);
+    if (currentEnd > endDate) currentEnd = new Date(endDate);
+
+    output += `${rowNum}. From: ${formatDate(currentStart)} to: ${formatDate(currentEnd)}\n`;
+
+    // Prepare for next interval
+    currentStart.setDate(currentEnd.getDate() +1);
+    rowNum++;
+    
+    // If next start is after end, break
+    if (currentStart > endDate) break;
+  }
+
+  document.getElementById('output').textContent = output.trim();
+});
+</script>
+</body>
+</html>
