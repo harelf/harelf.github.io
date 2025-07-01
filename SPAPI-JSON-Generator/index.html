@@ -168,7 +168,8 @@ function generateJSON(event) {
         output += JSON.stringify(jsonObj) + '\n';
 
         // Move to next interval
-        currentStart.setDate(currentEnd.getDate() + 1);
+        //currentStart.setDate(currentEnd.getDate() + 1); /*This one has a bug when the month changes within the period*/
+		currentStart.setTime(currentEnd.getTime()+1000*60*60*24);
     }
 
     document.getElementById('output').value = output.trim();
