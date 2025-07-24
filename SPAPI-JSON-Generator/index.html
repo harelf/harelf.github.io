@@ -86,7 +86,12 @@
 }
 
 .form-group label {
-    max-width: 180px;
+    font-size: 1.1rem;
+}
+
+.form-note {
+    font-size: 0.8rem;
+	text-align: left;
 }
 
 form#reportForm {
@@ -123,6 +128,9 @@ form#reportForm {
             <label for="report_type">Report Type:</label>
             <input type="text" id="report_type" name="report_type" required>
         </div>
+        <div class="form-note">
+            <label class="form-note">Note that you can put a comma delimited list of report types<br>and it will genearte separate JSON strings for each</label>
+        </div>
         <button type="submit">Generate JSON</button>
     </form>
 
@@ -146,6 +154,8 @@ function generateJSON(event) {
     const ksName = document.getElementById('ks_name').value;
     const accountId = document.getElementById('account_id').value;
     const reportType = document.getElementById('report_type').value;
+	const arrayOfReports = reportType.split(',');
+	const trimmedArrayOfReports = arrayOfReports.map(str => str.trim());
 
     if (!startDateStr || !endDateStr || isNaN(interval) || interval <= 0) {
         alert("Please fill all fields correctly.");
@@ -161,31 +171,33 @@ function generateJSON(event) {
     }
 
     let output = '';
-    let currentStart = new Date(startDate);
+	let currentStart = new Date(startDate);
 
-    while (currentStart <= endDate) {
-        let currentEnd = new Date(currentStart);
-        currentEnd.setDate(currentEnd.getDate() + interval - 1);
+	while (currentStart <= endDate) {
+		let currentEnd = new Date(currentStart);
+		currentEnd.setDate(currentEnd.getDate() + interval - 1);
 
-        if (currentEnd > endDate) {
-            currentEnd = new Date(endDate);
-        }
+		if (currentEnd > endDate) {
+			currentEnd = new Date(endDate);
+		}
 
-        // Build the JSON string
-        let jsonObj = {
-            "start_date": formatDate(currentStart),
-            "end_date": formatDate(currentEnd),
-            "report_type": reportType,
-            "ks_names": ksName,
-            "account_ids": ksName + "_" + accountId
-        };
-        
-        output += JSON.stringify(jsonObj) + '\n';
+		for (let i = 0; i < trimmedArrayOfReports.length; i++) {
+			// Build the JSON string
+			let jsonObj = {
+				"start_date": formatDate(currentStart),
+				"end_date": formatDate(currentEnd),
+				"report_type": trimmedArrayOfReports[i],
+				"ks_names": ksName,
+				"account_ids": ksName + "_" + accountId
+			};
+			
+			output += JSON.stringify(jsonObj) + '\n';
+		}
 
-        // Move to next interval
-        //currentStart.setDate(currentEnd.getDate() + 1); /*This one has a bug when the month changes within the period*/
-		currentStart.setTime(currentEnd.getTime()+1000*60*60*24);
-    }
+			// Move to next interval
+			//currentStart.setDate(currentEnd.getDate() + 1); /*This one has a bug when the month changes within the period*/
+			currentStart.setTime(currentEnd.getTime()+1000*60*60*24);
+	}
 
     document.getElementById('output').value = output.trim();
 }
