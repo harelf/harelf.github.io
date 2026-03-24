@@ -1,0 +1,190 @@
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="main.css">
+    <title>Timezone DST Checker</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 16px; }
+      .header { display:flex; align-items:center; gap: 10px; margin-bottom: 16px; }
+      .header a { text-decoration:none; font-size: 22px; }
+      table { border-collapse: collapse; margin-top: 12px; width: 100%; max-width: 640px; }
+      th, td { border: 1px solid #aaa; padding: 8px; text-align: left; }
+      th { background: #f2f2f2; }
+      #message { margin-top: 12px; color: #333; }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>DST Calculator</h1>
+    </div>
+
+    <label for="timeZoneSelect">Select timezone:</label><br>
+    <select id="timeZoneSelect" style="width: 100%; max-width: 640px; margin-top: 8px;"></select><br>
+    <button id="goBtn" style="margin-top: 10px; padding: 8px 16px;">GO</button>
+
+    <div id="message"></div>
+    <table id="resultTable" style="display:none;"></table>
+
+    <script>
+      const select = document.getElementById('timeZoneSelect');
+      const goBtn = document.getElementById('goBtn');
+      const resultTable = document.getElementById('resultTable');
+      const message = document.getElementById('message');
+
+      function parseGmtOffset(value) {
+        if (!value || !value.startsWith('GMT')) return 0;
+        const m = value.match(/GMT([+-]?\d{1,2})(?::?(\d{2}))?/);
+        if (!m) return 0;
+        const sign = m[1].startsWith('-') ? -1 : 1;
+        const hours = Math.abs(parseInt(m[1], 10));
+        const minutes = m[2] ? parseInt(m[2], 10) : 0;
+        return sign * (hours * 60 + minutes);
+      }
+
+      function offsetMinutesForInstant(instant, timeZone) {
+        const dtf = new Intl.DateTimeFormat('en-US', {
+          timeZone,
+          timeZoneName: 'shortOffset'
+        });
+        const parts = dtf.formatToParts(new Date(instant));
+        const tzName = parts.find(p => p.type === 'timeZoneName')?.value || 'GMT+0';
+        return parseGmtOffset(tzName);
+      }
+
+      function formatForZone(instant, timeZone) {
+        return new Intl.DateTimeFormat('en-US', {
+          timeZone,
+          year:'numeric', month:'2-digit', day:'2-digit',
+          hour:'2-digit', minute:'2-digit', second:'2-digit',
+          hour12: false,
+          timeZoneName: 'short'
+        }).format(new Date(instant));
+      }
+
+      function findNextDstChange(timeZone, fromTs = Date.now()) {
+        const start = fromTs;
+        const end = start + 365 * 24 * 60 * 60 * 1000;
+        let prevTs = start;
+        let prevOff = offsetMinutesForInstant(prevTs, timeZone);
+        const interval = 6 * 60 * 60 * 1000;
+
+        for (let ts = start + interval; ts <= end; ts += interval) {
+          const offs = offsetMinutesForInstant(ts, timeZone);
+          if (offs !== prevOff) {
+            let lo = prevTs;
+            let hi = ts;
+            while (hi - lo > 1000) {
+              const mid = Math.floor((lo + hi) / 2);
+              const midOff = offsetMinutesForInstant(mid, timeZone);
+              if (midOff === prevOff) {
+                lo = mid;
+              } else {
+                hi = mid;
+              }
+            }
+            const changeAt = new Date(hi);
+            const newOff = offsetMinutesForInstant(hi, timeZone);
+            return {
+              transition: changeAt,
+              fromOffset: prevOff,
+              toOffset: newOff
+            };
+          }
+          prevOff = offs;
+          prevTs = ts;
+        }
+        return null;
+      }
+
+      function findNextTwoDstChanges(timeZone) {
+        const first = findNextDstChange(timeZone, Date.now());
+        if (!first) {
+          return { first: null, second: null };
+        }
+        const secondStart = first.transition.getTime() + 1000;
+        const second = findNextDstChange(timeZone, secondStart);
+        return { first, second };
+      }
+
+      function createResultTable(zone, transitionData) {
+        if (!transitionData || !transitionData.first) {
+          resultTable.style.display = 'none';
+          message.textContent = 'No DST transition found in next 365 days for this timezone.';
+          return;
+        }
+
+        const first = transitionData.first;
+        const second = transitionData.second;
+
+        message.textContent = '';
+        resultTable.style.display = '';
+
+        let markup = `
+          <tr><th>Field</th><th>Value</th></tr>
+          <tr><td>Timezone</td><td>${zone}</td></tr>
+          <tr><td>Next DST change</td><td>${formatForZone(first.transition, zone)}</td></tr>
+          <tr><td>Begining or ending of DST</td><td>${first.toOffset > first.fromOffset ? 'Beginning of DST (offset increased)' : 'Ending of DST (offset decreased)'}</td></tr>
+          <tr><td>Exact time 1 second before change</td><td>${formatForZone(first.transition.getTime() - 1000, zone)}</td></tr>
+          <tr><td>Exact time 1 second after change</td><td>${formatForZone(first.transition.getTime() + 1000, zone)}</td></tr>
+          <tr><td>Offset before change</td><td>${first.fromOffset} minutes</td></tr>
+          <tr><td>Offset after change</td><td>${first.toOffset} minutes</td></tr>
+        `;
+
+        if (second) {
+          markup += `
+            <tr><td colspan="2" style="background:#eef; font-weight:bold;">After-next DST transition</td></tr>
+            <tr><td>After-next DST change</td><td>${formatForZone(second.transition, zone)}</td></tr>
+            <tr><td>Begining or ending of DST</td><td>${second.toOffset > second.fromOffset ? 'Beginning of DST (offset increased)' : 'Ending of DST (offset decreased)'}</td></tr>
+            <tr><td>Exact time 1 second before change</td><td>${formatForZone(second.transition.getTime() - 1000, zone)}</td></tr>
+            <tr><td>Exact time 1 second after change</td><td>${formatForZone(second.transition.getTime() + 1000, zone)}</td></tr>
+            <tr><td>Offset before change</td><td>${second.fromOffset} minutes</td></tr>
+            <tr><td>Offset after change</td><td>${second.toOffset} minutes</td></tr>
+          `;
+        } else {
+          markup += `
+            <tr><td colspan="2" style="background:#f9f9f9;">No second DST transition found within the next year.</td></tr>
+          `;
+        }
+
+        resultTable.innerHTML = markup;
+      }
+
+      function populateTimezones() {
+        if (typeof Intl.supportedValuesOf === 'function') {
+          const zones = Intl.supportedValuesOf('timeZone');
+          zones.forEach(zone => {
+            const opt = document.createElement('option');
+            opt.value = zone;
+            opt.textContent = zone;
+            select.appendChild(opt);
+          });
+        } else {
+          const known = [
+            'UTC', 'Europe/London', 'Europe/Berlin', 'America/New_York', 'America/Los_Angeles',
+            'Asia/Tokyo', 'Asia/Kolkata', 'Australia/Sydney', 'America/Sao_Paulo', 'Africa/Johannesburg'
+          ];
+          known.forEach(zone => {
+            const opt = document.createElement('option');
+            opt.value = zone;
+            opt.textContent = zone;
+            select.appendChild(opt);
+          });
+          message.textContent = 'Browser does not support Intl.supportedValuesOf(timeZone). Showing a sample list.';
+        }
+      }
+
+      goBtn.addEventListener('click', () => {
+        const tz = select.value;
+        if (!tz) return;
+        message.textContent = 'Looking up DST transition...';
+        setTimeout(() => {
+          const changes = findNextTwoDstChanges(tz);
+          createResultTable(tz, changes);
+        }, 10);
+      });
+
+      populateTimezones();
+    </script>
+  </body>
+</html>
