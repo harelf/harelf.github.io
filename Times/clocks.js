@@ -11,6 +11,7 @@ function updateClocks() {
     'jp-time': 'Asia/Tokyo',
     'hk-time': 'Asia/Hong_Kong',
     'india-time': 'Asia/Kolkata',
+    'pakistan-time': 'Asia/Karachi',
     'israel-time': 'Asia/Jerusalem',
     'ukraine-time': 'Europe/Kiev',
     'uk-time': 'Europe/London',
