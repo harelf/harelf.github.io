@@ -48,6 +48,12 @@
       border: 1px solid #cfd8dc;
       font-size: 1rem;
       background-color: #f9fafb;
+      font-family: inherit;
+      color: #2d3a4b;
+      box-sizing: border-box;
+    }
+    select {
+      font-size: 0.95rem;
     }
     input[type="date"]::-webkit-input-placeholder { color:#b0bec5; }
     input[type="date"]::-moz-placeholder { color:#b0bec5; }
@@ -85,18 +91,34 @@
     <label for="interval">Interval (in days):</label>
     <input type="number" id="interval" name="interval" min="1" required>
 
+    <label for="date_format">Date Format:</label>
+    <select id="date_format" name="date_format">
+      <option value="DD-MM-YYYY">DD-MM-YYYY</option>
+      <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+      <option value="MM-DD-YYYY">MM-DD-YYYY</option>
+    </select>
+
     <br><button type="submit">Generate</button>
   </form>
 
   <div id="output"></div>
 
 <script>
-function formatDate(date) {
-  // Returns date as YYYY-mm-dd
+function formatDate(date, format) {
   const yyyy = date.getFullYear();
   const mm = String(date.getMonth() + 1).padStart(2, '0');
   const dd = String(date.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+
+  switch (format) {
+    case 'DD-MM-YYYY':
+      return `${dd}-${mm}-${yyyy}`;
+    case 'YYYY-MM-DD':
+      return `${yyyy}-${mm}-${dd}`;
+    case 'MM-DD-YYYY':
+      return `${mm}-${dd}-${yyyy}`;
+    default:
+      return `${dd}-${mm}-${yyyy}`;
+  }
 }
 
 document.getElementById('intervalForm').addEventListener('submit', function(e) {
@@ -105,6 +127,7 @@ document.getElementById('intervalForm').addEventListener('submit', function(e) {
   const startDateStr = document.getElementById('start_date').value;
   const endDateStr = document.getElementById('end_date').value;
   const intervalDays = parseInt(document.getElementById('interval').value, 10);
+  const dateFormat = document.getElementById('date_format').value;
 
   if (!startDateStr || !endDateStr || isNaN(intervalDays) || intervalDays <= 0) {
     document.getElementById('output').textContent = 'Please fill all fields correctly.';
@@ -129,10 +152,10 @@ document.getElementById('intervalForm').addEventListener('submit', function(e) {
     currentEnd.setDate(currentEnd.getDate() + intervalDays -1);
     if (currentEnd > endDate) currentEnd = new Date(endDate);
 
-    output += `${rowNum}. From: ${formatDate(currentStart)} to: ${formatDate(currentEnd)}\n`;
+    output += `${rowNum}. From: ${formatDate(currentStart, dateFormat)} to: ${formatDate(currentEnd, dateFormat)}\n`;
 
     // Prepare for next interval
-	currentStart.setTime(currentEnd.getTime()+1000*60*60*24);
+    currentStart.setTime(currentEnd.getTime()+1000*60*60*24);
     rowNum++;
     
     // If next start is after end, break
